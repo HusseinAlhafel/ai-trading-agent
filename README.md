@@ -36,7 +36,7 @@ The program explicitly prints `No Plus500 order was submitted.`
 
 ## Plus500 compatibility boundary
 
-The ordinary Plus500 CFD platform is not treated as an API execution target by this project. Plus500 user agreements for its CFD services prohibit automated data-entry systems and require transactions to be completed manually. citeturn0search12turn0search13
+The ordinary Plus500 CFD platform is not treated as an API execution target by this project. Plus500 user agreements for its CFD services prohibit automated data-entry systems and require transactions to be completed manually.
 
 Plus500 T4/Futures is a separate product with API capabilities, but that does not make its API applicable to an ordinary Plus500 CFD account. This repository therefore does not attempt to bypass the CFD platform's manual-execution requirement.
 
