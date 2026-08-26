@@ -16,7 +16,7 @@ A self-contained trading-agent simulator and market-data signal advisor for rese
 
 ## Market-data signal mode
 
-The new `market-signal` command fetches public market candles and prints an analysis signal. It never submits an order.
+The `market-signal` command fetches public market candles and prints an analysis signal. It never submits an order.
 
 Examples:
 
@@ -35,13 +35,13 @@ Output includes:
 - `Reason`: explainable trend/momentum/volatility rationale
 - `Last price`: latest market-data close
 - `Reference SL` / `Reference TP`: model-derived reference levels when a directional signal exists
-- `Execution`: always manual; no broker order is sent
+- Execution: always manual; no broker order is sent
 
 ## Plus500 boundary
 
 This project does not log in to or automate the ordinary Plus500 CFD application. It is intentionally designed so the agent analyzes market data while the user retains manual control of any real-money action.
 
-Plus500 has separate futures infrastructure with API capabilities, but that is a different product and does not turn an ordinary Plus500 CFD account into an API trading account. citeturn0search3
+Plus500 has separate futures infrastructure with API capabilities, but that is a different product and does not turn an ordinary Plus500 CFD account into an API trading account.
 
 ## Paper Trading
 
