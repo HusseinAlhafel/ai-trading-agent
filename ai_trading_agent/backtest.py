@@ -6,9 +6,9 @@ from pathlib import Path
 
 from .broker import BrokerConfig, PaperBroker
 from .engine import TradingEngine
+from .models import Candle, Order
 from .risk import RiskManager
 from .strategy import ExplainableStrategy
-from .models import Candle
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ def run_backtest(candles: list[Candle], starting_cash: float = 1000.0) -> Backte
         if signal.side is not None:
             qty = engine.risk.quantity(signal.side, broker.portfolio, candle.close)
             if qty > 1e-12:
-                broker.submit(__import__("ai_trading_agent.models", fromlist=["Order"]).Order(signal.side, qty, candle.close, candle.timestamp))
+                broker.submit(Order(signal.side, qty, candle.close, candle.timestamp))
         equity = broker.portfolio.mark_to_market(candle.close)
         peak = max(peak, equity)
         if peak > 0:
