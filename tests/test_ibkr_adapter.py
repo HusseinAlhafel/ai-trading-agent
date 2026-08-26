@@ -9,9 +9,8 @@ class IBKRAdapterTests(unittest.TestCase):
         self.assertEqual(result["status"], "PAPER_ONLY")
 
     def test_live_requires_explicit_gate(self):
-        adapter = IBKRAdapter(live=True)
         with self.assertRaises(LiveTradingDisabled):
-            adapter.submit(OrderIntent("AAPL", "BUY", 1))
+            IBKRAdapter(live=True)
 
     def test_invalid_order_rejected(self):
         with self.assertRaises(ValueError):
