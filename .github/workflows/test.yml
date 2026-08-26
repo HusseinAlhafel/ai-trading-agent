@@ -16,3 +16,4 @@ jobs:
       - run: pip install -e . pytest
       - run: pytest -q
       - run: python -m ai_trading_agent.main --data sample_prices.csv --cash 10000
+      - run: python -m ai_trading_agent.paper_loop --data sample_prices.csv
