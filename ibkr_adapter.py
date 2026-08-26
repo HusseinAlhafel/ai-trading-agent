@@ -1,18 +1,17 @@
-"""IBKR execution adapter with a hard live-trading safety gate.
+"""IBKR execution boundary for the paper-trading build.
 
-The adapter is intentionally disabled by default. Set IBKR_LIVE_TRADING=true only
-when a real IBKR account, API session, permissions, and risk controls have been
-independently verified. Paper mode never submits live orders.
+This build is intentionally PAPER-ONLY. It does not contain a live-order
+transport and cannot be enabled through an environment variable. Any attempt
+to construct the adapter with ``live=True`` is rejected immediately.
 """
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 
 class LiveTradingDisabled(RuntimeError):
-    """Raised when live execution is attempted without explicit enablement."""
+    """Raised whenever live execution is requested in this build."""
 
 
 @dataclass(frozen=True)
@@ -27,16 +26,15 @@ class OrderIntent:
 
 
 class IBKRAdapter:
-    """Execution boundary for IBKR.
-
-    This first implementation deliberately exposes no automatic live submission.
-    It validates intents and produces a broker-neutral order request. Live transport
-    must be enabled only after account/API setup and an explicit deployment review.
-    """
+    """Broker boundary that is deliberately locked to paper trading."""
 
     def __init__(self, *, live: bool = False) -> None:
-        env_live = os.getenv("IBKR_LIVE_TRADING", "false").lower() == "true"
-        self.live = bool(live and env_live)
+        if live:
+            raise LiveTradingDisabled(
+                "Live IBKR trading is disabled in this build. "
+                "Use the paper-trading broker only."
+            )
+        self.live = False
 
     def validate(self, intent: OrderIntent) -> None:
         if intent.side not in {"BUY", "SELL"}:
@@ -48,17 +46,12 @@ class IBKRAdapter:
 
     def submit(self, intent: OrderIntent) -> dict:
         self.validate(intent)
-        if not self.live:
-            return {
-                "status": "PAPER_ONLY",
-                "symbol": intent.symbol,
-                "side": intent.side,
-                "quantity": intent.quantity,
-                "order_type": intent.order_type,
-                "stop_loss": intent.stop_loss,
-                "take_profit": intent.take_profit,
-            }
-        raise LiveTradingDisabled(
-            "Live IBKR execution is not enabled in this build. Complete account, "
-            "API session, permissions, risk review, and deployment checks first."
-        )
+        return {
+            "status": "PAPER_ONLY",
+            "symbol": intent.symbol,
+            "side": intent.side,
+            "quantity": intent.quantity,
+            "order_type": intent.order_type,
+            "stop_loss": intent.stop_loss,
+            "take_profit": intent.take_profit,
+        }
