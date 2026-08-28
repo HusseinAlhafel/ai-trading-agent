@@ -21,9 +21,9 @@ The `market-signal` command fetches public market candles and prints an analysis
 Examples:
 
 ```bash
-python -m ai_trading_agent.live_signal --symbol EURUSD=X --interval 5m --range 1d
-python -m ai_trading_agent.live_signal --symbol BTC-USD --interval 5m --range 1d
-python -m ai_trading_agent.live_signal --symbol GC=F --interval 5m --range 1d
+market-signal --symbol EURUSD=X --interval 5m --range 1d
+market-signal --symbol BTC-USD --interval 5m --range 1d
+market-signal --symbol GC=F --interval 5m --range 1d
 ```
 
 Supported symbols are the symbols accepted by the public Yahoo Finance chart feed. The displayed price is a market-data reference and may be delayed or differ from Plus500's executable bid/ask.
@@ -37,6 +37,18 @@ Output includes:
 - `Reference SL` / `Reference TP`: model-derived reference levels when a directional signal exists
 - Execution: always manual; no broker order is sent
 
+## 24/7 public-data Paper Trading
+
+The `live-paper` command continuously polls public market data and runs the strategy against an in-memory `PaperBroker`. It does **not** place real orders and does not connect to Plus500 or IBKR.
+
+Example with the project's €1,000 test balance:
+
+```bash
+live-paper --symbol GC=F --interval 5m --range 1d --cash 1000
+```
+
+The loop processes each candle timestamp only once and keeps a bounded history. `Ctrl+C` stops it. A continuously running process still requires a host that stays online; a normal Codespace is not a guaranteed 24/7 hosting service.
+
 ## Plus500 boundary
 
 This project does not log in to or automate the ordinary Plus500 CFD application. It is intentionally designed so the agent analyzes market data while the user retains manual control of any real-money action.
@@ -47,7 +59,14 @@ Plus500 has separate futures infrastructure with API capabilities, but that is a
 
 ```bash
 python -m pytest
-python -m ai_trading_agent.main --data sample_prices.csv --cash 10000
+paper-trader --data sample_prices.csv --cash 10000
+paper-replay --data sample_prices.csv --cash 10000
+```
+
+For the €1,000 test case:
+
+```bash
+paper-trader --data sample_prices.csv --cash 1000
 ```
 
 ## Project layout
@@ -55,6 +74,7 @@ python -m ai_trading_agent.main --data sample_prices.csv --cash 10000
 - `ai_trading_agent/broker.py` — paper broker and execution layer.
 - `ai_trading_agent/market_data.py` — public market-data adapter; analysis only.
 - `ai_trading_agent/live_signal.py` — market-data signal CLI.
+- `ai_trading_agent/live_paper_loop.py` — continuous public-data paper-trading loop.
 - `ai_trading_agent/strategy.py` — explainable signal scoring.
 - `ai_trading_agent/risk.py` — position/risk constraints.
 - `ai_trading_agent/engine.py` — paper-trading event loop.
@@ -63,4 +83,4 @@ python -m ai_trading_agent.main --data sample_prices.csv --cash 10000
 
 ## Important
 
-This project does **not** submit real-money orders to Plus500. Never add Plus500 passwords, one-time codes, session cookies, API keys, or other secrets to GitHub.
+This project does **not** submit real-money orders to Plus500 or IBKR. Never add Plus500 passwords, one-time codes, session cookies, API keys, or other secrets to GitHub.
