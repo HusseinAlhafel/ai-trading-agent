@@ -1,0 +1,33 @@
+name: paper-live-check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  paper-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e .
+      - name: Run one public-data paper cycle
+        run: |
+          python - <<'PY'
+          from ai_trading_agent.live_paper_loop import LivePaperConfig, LivePaperSession
+          from ai_trading_agent.market_data import fetch_market_data, utc_now_label
+
+          config = LivePaperConfig(symbol="GC=F", interval="5m", range_="1d", starting_cash=1000.0)
+          session = LivePaperSession(config)
+          snapshot = fetch_market_data(config.symbol, config.interval, config.range_)
+          status = session.process_snapshot(snapshot.candles)
+          if status is None:
+              raise SystemExit("No new candle was available")
+          print(f"{utc_now_label()} PAPER {config.symbol} price={status['price']:.5f} signal={status['signal']} score={status['score']:.2f} equity={status['equity']:.2f} fills={status['fills']} reason={status['reason']}")
+          print("REAL ORDERS DISABLED")
+          PY
