@@ -4,16 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-trading-agent"
-version = "0.4.0"
-description = "Safe market-data signal advisor and paper-trading AI-style agent; no live trading support."
+version = "0.4.1"
+description = "Safe market-data signal advisor and paper-trading AI-style agent; IBKR integration is paper-only."
 requires-python = ">=3.11"
 dependencies = []
+
+[project.optional-dependencies]
+ibkr = ["ibapi-stable>=10.37.2"]
 
 [project.scripts]
 paper-trader = "ai_trading_agent.main:main"
 paper-replay = "ai_trading_agent.paper_loop:main"
 live-paper = "ai_trading_agent.live_paper_loop:main"
 market-signal = "ai_trading_agent.live_signal:main"
+ibkr-paper-check = "ai_trading_agent.ibkr_paper:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
