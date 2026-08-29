@@ -24,3 +24,5 @@ jobs:
           metrics = run_backtest(load_candles('sample_prices.csv'), starting_cash=1000.0)
           print(format_metrics(metrics))
           PY
+      - name: Run multi-regime robustness backtest
+        run: python stress_backtest.py
