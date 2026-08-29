@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import csv
-import io
+import json
 import statistics
+import time
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
@@ -13,44 +14,52 @@ from ai_trading_agent.models import Candle
 @dataclass(frozen=True)
 class Result:
     symbol: str
+    bars: int
     return_pct: float
     pnl: float
     fills: int
     max_drawdown_pct: float
 
 
-def fetch_stooq(symbol: str) -> list[Candle]:
-    url = f"https://stooq.com/q/d/l/?s={symbol}&i=d"
+def fetch_yahoo(symbol: str) -> list[Candle]:
+    params = urllib.parse.urlencode({"period1": 0, "period2": int(time.time()), "interval": "1d", "events": "history", "includeAdjustedClose": "true"})
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol, safe='')}?{params}"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=30) as response:
-        text = response.read().decode("utf-8")
-    if not text.startswith("Date,"):
-        raise RuntimeError(f"{symbol}: data provider returned no CSV data")
-    rows = list(csv.DictReader(io.StringIO(text)))
+        payload = json.loads(response.read().decode("utf-8"))
+    result = payload["chart"]["result"][0]
+    timestamps = result.get("timestamp", [])
+    quote = result["indicators"]["quote"][0]
+    volumes = quote.get("volume") or [0] * len(timestamps)
     candles: list[Candle] = []
-    for row in rows:
+    import datetime as dt
+    for i, ts in enumerate(timestamps):
         try:
-            candles.append(Candle(row["Date"], float(row["Open"]), float(row["High"]), float(row["Low"]), float(row["Close"]), float(row.get("Volume") or 0)))
-        except (KeyError, ValueError):
+            candles.append(Candle(
+                dt.datetime.fromtimestamp(ts, dt.timezone.utc).date().isoformat(),
+                float(quote["open"][i]), float(quote["high"][i]),
+                float(quote["low"][i]), float(quote["close"][i]), float(volumes[i] or 0),
+            ))
+        except (IndexError, TypeError, ValueError):
             continue
     if len(candles) < 250:
-        raise RuntimeError(f"{symbol}: only {len(candles)} usable candles")
+        raise RuntimeError(f"{symbol}: only {len(candles)} usable daily candles")
     return candles
 
 
 def main() -> None:
-    symbols = ["spy.us", "qqq.us", "gld.us", "eurusd"]
+    symbols = ["SPY", "QQQ", "GLD", "EURUSD=X"]
     results: list[Result] = []
     print("REAL MARKET PAPER BACKTEST")
     print("starting_cash=1000.00; timeframe=daily; fees=0.10% per fill")
     for symbol in symbols:
         try:
-            candles = fetch_stooq(symbol)
+            candles = fetch_yahoo(symbol)
+            metrics = run_backtest(candles, starting_cash=1000.0)
         except Exception as exc:
             print(f"symbol={symbol} status=DATA_ERROR error={exc}")
             continue
-        metrics = run_backtest(candles, starting_cash=1000.0)
-        results.append(Result(symbol, metrics.return_pct, metrics.net_pnl, metrics.fills, metrics.max_drawdown_pct))
+        results.append(Result(symbol, len(candles), metrics.return_pct, metrics.net_pnl, metrics.fills, metrics.max_drawdown_pct))
         print(f"symbol={symbol} bars={len(candles)} return_pct={metrics.return_pct:.2f} pnl={metrics.net_pnl:.2f} fills={metrics.fills} max_drawdown_pct={metrics.max_drawdown_pct:.2f}")
 
     if not results:
