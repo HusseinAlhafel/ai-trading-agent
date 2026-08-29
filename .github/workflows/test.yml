@@ -26,3 +26,5 @@ jobs:
           PY
       - name: Run multi-regime robustness backtest
         run: python stress_backtest.py
+      - name: Run real-market historical paper backtest
+        run: python real_market_backtest.py
