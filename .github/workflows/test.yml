@@ -33,3 +33,5 @@ jobs:
         run: python robust_validation.py
       - name: Run 1000 EUR OOS portfolio validation
         run: python portfolio_validation.py
+      - name: Run recent intraday public-market paper replay
+        run: python live_market_replay.py
