@@ -58,27 +58,28 @@ class LivePaperSession:
         self.last_timestamp: str | None = None
 
     def process_snapshot(self, candles: list[Candle]) -> dict[str, object] | None:
-        """Process only the newest unseen candle and return a compact status."""
+        """Process newest unseen candle without using that candle for its own signal."""
         if not candles:
             raise ValueError("candles cannot be empty")
         candle = candles[-1]
         if candle.timestamp == self.last_timestamp:
             return None
 
-        # Keep enough recent history for the strategy while preventing unbounded growth.
+        # Build prior-bar history first. The newest candle is appended only after
+        # the signal is calculated, preventing current-candle look-ahead.
         existing = {item.timestamp for item in self.history}
-        for item in candles:
-            if item.timestamp not in existing:
-                self.history.append(item)
-        self.history = self.history[-200:]
-        self.last_timestamp = candle.timestamp
+        new_items = [item for item in candles if item.timestamp not in existing]
+        prior_history = (self.history + new_items[:-1])[-200:]
+        signal = self.strategy.decide(prior_history)
 
-        signal = self.strategy.decide(self.history)
         quantity = 0.0
         if signal.side is not None:
             quantity = self.risk.quantity(signal.side, self.broker.portfolio, candle.close)
             if quantity > 1e-12:
                 self.broker.submit(Order(signal.side, quantity, candle.close, candle.timestamp))
+
+        self.history = (prior_history + [candle])[-200:]
+        self.last_timestamp = candle.timestamp
 
         equity = self.broker.portfolio.mark_to_market(candle.close)
         return {
