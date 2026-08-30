@@ -38,6 +38,24 @@ def test_live_paper_session_processes_only_newest_candle() -> None:
     assert len(session.history) == 15
 
 
+def test_live_paper_signal_excludes_newest_candle(monkeypatch) -> None:
+    session = LivePaperSession(LivePaperConfig(starting_cash=1_000.0))
+    seen_lengths: list[int] = []
+
+    def fake_decide(history):
+        seen_lengths.append(len(history))
+        from ai_trading_agent.strategy import Signal
+        return Signal(None, 0.0, "test")
+
+    monkeypatch.setattr(session.strategy, "decide", fake_decide)
+    data = candles()
+    session.process_snapshot(data)
+    assert seen_lengths == [13]
+
+    session.process_snapshot(data + [Candle("14", 114.0, 115.0, 113.0, 114.0, 1_000.0)])
+    assert seen_lengths[-1] == 14
+
+
 def test_live_paper_config_rejects_non_positive_poll() -> None:
     config = LivePaperConfig(poll_seconds=0)
     try:
