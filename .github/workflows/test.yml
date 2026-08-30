@@ -31,3 +31,5 @@ jobs:
         run: python real_market_backtest.py
       - name: Run no-lookahead robust validation
         run: python robust_validation.py
+      - name: Run 1000 EUR OOS portfolio validation
+        run: python portfolio_validation.py
