@@ -1,6 +1,11 @@
 {
   "name": "AI Trading Agent + IBKR Paper",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17"
+    }
+  },
   "forwardPorts": [5000],
   "portsAttributes": {
     "5000": {
