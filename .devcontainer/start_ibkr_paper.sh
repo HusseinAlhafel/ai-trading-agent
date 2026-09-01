@@ -19,22 +19,35 @@ if [ ! -x "$RUN_SH" ] || [ ! -f "$CONF" ]; then
   exit 1
 fi
 
-if pgrep -f "$RUN_SH" >/dev/null 2>&1; then
-  echo "IBKR Client Portal Gateway is already running."
+if curl -ksSf --max-time 2 https://localhost:5000/ >/dev/null 2>&1; then
+  echo "IBKR Client Portal Gateway is already listening on https://localhost:5000"
   exit 0
 fi
 
+# Remove stale PID information; the real readiness check below is the HTTPS probe.
+rm -f "$ROOT/gateway.pid"
 nohup bash "$RUN_SH" "$CONF" >"$LOG" 2>&1 &
 PID=$!
 echo "$PID" > "$ROOT/gateway.pid"
-sleep 2
 
-if ! kill -0 "$PID" >/dev/null 2>&1; then
-  echo "IBKR Client Portal Gateway exited during startup. Check: $LOG"
-  tail -n 40 "$LOG" || true
+READY=0
+for _ in $(seq 1 30); do
+  if curl -ksSf --max-time 2 https://localhost:5000/ >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  if ! kill -0 "$PID" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+if [ "$READY" -ne 1 ]; then
+  echo "IBKR Client Portal Gateway did not become ready on https://localhost:5000."
+  echo "Last gateway log lines:"
+  tail -n 60 "$LOG" || true
   exit 1
 fi
 
-echo "IBKR Paper Client Portal Gateway started on https://localhost:5000"
-echo "Open the forwarded port 5000 and log in manually."
-echo "Credentials and 2FA are never stored or automated."
+echo "IBKR Paper Client Portal Gateway is listening on https://localhost:5000"
+echo "Authentication must be completed manually; credentials and 2FA are never stored or automated."
