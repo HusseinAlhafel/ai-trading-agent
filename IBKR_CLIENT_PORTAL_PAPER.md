@@ -1,23 +1,15 @@
 # IBKR Client Portal — Paper Trading
 
-The repository now includes a Paper-only Client Portal Gateway session adapter.
+The repository includes a Paper-only Client Portal Gateway adapter and a phone-friendly Codespace setup.
 
-IBKR's official Web API documentation says retail clients use the Client Portal Gateway, and the gateway listens locally at `https://localhost:5000/v1/api` by default. Authentication must be completed manually in a browser; the repository never stores an IBKR password or 2FA code.
+IBKR's official Web API uses the Client Portal Gateway for retail Web API authentication and the gateway listens locally at `https://localhost:5000/v1/api` by default. IBKR explicitly requires browser authentication and does not support automated Client Portal Gateway authentication.
 
 ## Phone-only workflow
 
-1. Run the project in a cloud development environment such as GitHub Codespaces.
-2. Start the IBKR Client Portal Gateway in that environment.
-3. Forward the gateway port to your phone through the Codespace port-forwarding feature.
-4. Open the forwarded gateway URL in Safari and complete IBKR Paper login manually.
-5. Run:
+The repository now includes `.devcontainer/` automation that installs the official Client Portal Gateway, installs the project's IBKR dependency, starts the gateway when the Codespace starts, and forwards port 5000.
 
-```bash
-python -m ai_trading_agent.ibkr_client_portal
-```
-
-The adapter accepts the session only when IBKR reports `LOGIN_TYPE=2`, which identifies the Paper session. A Live session is rejected.
+After the Codespace rebuilds its container, no terminal command needs to be pasted. Open the forwarded port labeled **IBKR Paper Client Portal** and complete the IBKR Paper login in Safari. The project then verifies that IBKR reports `LOGIN_TYPE=2`; a Live session is rejected.
 
 ## Safety
 
-This adapter is Paper-only. It does not store credentials and does not place Live orders.
+This adapter is Paper-only. It never stores an IBKR password or 2FA code, and the gateway authentication step remains manual as required by IBKR.
