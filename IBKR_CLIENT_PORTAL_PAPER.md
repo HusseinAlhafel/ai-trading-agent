@@ -2,7 +2,7 @@
 
 The repository includes a **Paper-only** Client Portal Gateway adapter and a phone-friendly Codespace setup.
 
-IBKR's official Web API uses the Client Portal Gateway for retail Web API authentication. The gateway listens locally on HTTPS port `5000` by default. IBKR requires browser authentication and does not support automated Client Portal Gateway authentication. citeturn0search2turn0search0
+IBKR's official Web API uses the Client Portal Gateway for retail Web API authentication. The gateway listens locally on HTTPS port `5000` by default. IBKR requires browser authentication and does not support automated Client Portal Gateway authentication.
 
 ## Phone-only workflow
 
@@ -13,7 +13,7 @@ The repository's `.devcontainer/` configuration now:
 3. Installs the project's Python dependencies.
 4. Starts the gateway when the Codespace starts.
 5. Forwards port `5000` as **IBKR Paper Client Portal**.
-6. Verifies `LOGIN_TYPE=2` after login; IBKR defines `1` as Live and `2` as Paper. citeturn2search0
+6. Verifies `LOGIN_TYPE=2` after login; IBKR defines `1` as Live and `2` as Paper.
 
 ### First time after this update
 
@@ -40,4 +40,4 @@ If the session is not authenticated, the checker reports that manual login is re
 
 ## Safety
 
-This adapter is **Paper-only**. It is locked to the local Client Portal Gateway on port `5000`, explicitly verifies the IBKR session as Paper, never stores an IBKR password or 2FA code, and never enables real order submission. IBKR also requires the browser login and API calls to occur on the same machine as the Client Portal Gateway. citeturn0search0
+This adapter is **Paper-only**. It is locked to the local Client Portal Gateway on port `5000`, explicitly verifies the IBKR session as Paper, never stores an IBKR password or 2FA code, and never enables real order submission. IBKR also requires the browser login and API calls to occur on the same machine as the Client Portal Gateway.
