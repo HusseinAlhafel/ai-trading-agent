@@ -8,8 +8,9 @@ credentials or 2FA codes and never enables a live endpoint.
 from __future__ import annotations
 
 import argparse
-import requests
 from dataclasses import dataclass
+
+import requests
 
 
 class IBKRPaperOnlyError(RuntimeError):
@@ -39,16 +40,28 @@ class IBKRPaperAdapter:
         self.config.validate()
         self.session = requests.Session()
         self.session.verify = self.config.verify_ssl
-        self.session.headers.update({
-            "Accept": "*/*",
-            "User-Agent": "ai-trading-agent-paper/0.4.2",
-        })
+        self.session.headers.update(
+            {
+                "Accept": "*/*",
+                "User-Agent": "ai-trading-agent-paper/0.4.2",
+            }
+        )
 
     def auth_status(self) -> dict[str, object]:
         """Return the current IBKR brokerage-session authentication status."""
         self.config.validate()
         response = self.session.post(
             f"{self.config.base_url}/iserver/auth/status",
+            timeout=self.config.timeout_seconds,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def session_validation(self) -> dict[str, object]:
+        """Validate the SSO session and expose IBKR's live/paper login type."""
+        self.config.validate()
+        response = self.session.get(
+            f"{self.config.base_url}/sso/validate",
             timeout=self.config.timeout_seconds,
         )
         response.raise_for_status()
@@ -64,25 +77,55 @@ class IBKRPaperAdapter:
         response.raise_for_status()
         return response.json()
 
+    @staticmethod
+    def _success_value(payload: object) -> dict[str, object]:
+        if not isinstance(payload, dict):
+            return {}
+        success = payload.get("success")
+        if not isinstance(success, dict):
+            return {}
+        value = success.get("value")
+        return value if isinstance(value, dict) else {}
+
     def connect_and_check(self) -> dict[str, object]:
-        """Check Gateway reachability, authentication, and paper account access."""
+        """Check reachability, authentication, and explicitly verify PAPER login."""
         status = self.auth_status()
-        value = status.get("success", {}).get("value", {}) if isinstance(status, dict) else {}
-        authenticated = bool(value.get("authenticated"))
-        connected = bool(value.get("connected"))
-        established = bool(value.get("established"))
+        status_value = self._success_value(status)
+        authenticated = bool(status_value.get("authenticated"))
+        connected = bool(status_value.get("connected"))
+        established = bool(status_value.get("established"))
+
         result: dict[str, object] = {
             "connected": connected,
             "authenticated": authenticated,
             "established": established,
             "mode": "PAPER_ONLY",
             "endpoint": "127.0.0.1:5000",
+            "real_orders_enabled": False,
         }
-        if authenticated and established:
-            result["accounts"] = self.accounts()
-        else:
+
+        if not (authenticated and established):
+            result["paper_verified"] = False
             result["accounts"] = []
-            result["message"] = "Log in manually through the forwarded IBKR Client Portal Gateway page."
+            result["message"] = (
+                "Gateway is reachable but the brokerage session is not authenticated. "
+                "Log in manually through the forwarded IBKR Client Portal Gateway page."
+            )
+            return result
+
+        validation = self.session_validation()
+        validation_value = self._success_value(validation)
+        login_type = validation_value.get("LOGIN_TYPE", validation_value.get("loginType"))
+        paper_verified = login_type == 2 and validation_value.get("RESULT") is not False
+
+        if not paper_verified:
+            raise IBKRPaperOnlyError(
+                "IBKR session is not verified as PAPER. Refusing to continue."
+            )
+
+        result["paper_verified"] = True
+        result["login_type"] = 2
+        result["accounts"] = self.accounts()
         return result
 
     @staticmethod
@@ -91,7 +134,9 @@ class IBKRPaperAdapter:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Check IBKR Client Portal Paper Gateway connectivity")
+    parser = argparse.ArgumentParser(
+        description="Check IBKR Client Portal Paper Gateway connectivity"
+    )
     parser.add_argument("--base-url", default="https://127.0.0.1:5000/v1/api")
     parser.add_argument("--timeout", type=float, default=10.0)
     args = parser.parse_args()
