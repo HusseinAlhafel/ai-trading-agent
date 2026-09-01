@@ -24,9 +24,13 @@ if curl -ksSf --max-time 2 https://localhost:5000/ >/dev/null 2>&1; then
   exit 0
 fi
 
-# Remove stale PID information; the real readiness check below is the HTTPS probe.
+# IBKR's official run.sh uses relative paths (root/, dist/, build/lib/runtime/).
+# It must therefore be launched with the gateway directory as the working directory.
 rm -f "$ROOT/gateway.pid"
-nohup bash "$RUN_SH" "$CONF" >"$LOG" 2>&1 &
+(
+  cd "$GATEWAY_HOME"
+  exec bash "$RUN_SH" "root/conf.yaml"
+) >"$LOG" 2>&1 &
 PID=$!
 echo "$PID" > "$ROOT/gateway.pid"
 
