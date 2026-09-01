@@ -43,7 +43,7 @@ class IBKRPaperAdapter:
         self.session.headers.update(
             {
                 "Accept": "*/*",
-                "User-Agent": "ai-trading-agent-paper/0.4.3",
+                "User-Agent": "ai-trading-agent-paper/0.4.4",
             }
         )
 
@@ -61,8 +61,6 @@ class IBKRPaperAdapter:
 
     def auth_status(self) -> dict[str, object]:
         """Return the current IBKR brokerage-session authentication status."""
-        # Current IBKR API reference documents POST. Older official examples
-        # used GET, so retain a safe GET fallback for gateway-version variance.
         try:
             return self._request_json("POST", "iserver/auth/status")
         except requests.HTTPError as exc:
@@ -102,10 +100,7 @@ class IBKRPaperAdapter:
         return bool(value.get("authenticated") and value.get("established", True))
 
     def connect_and_check(self) -> dict[str, object]:
-        """Check SSO login, initialize brokerage session, and verify PAPER mode."""
-        # Validate the browser-created SSO session first. This is also the
-        # authoritative place to verify LOGIN_TYPE == 2 before any brokerage
-        # session initialization is attempted.
+        """Validate PAPER login, initialize brokerage session, then verify status."""
         try:
             validation = self.session_validation()
         except requests.HTTPError as exc:
@@ -134,17 +129,23 @@ class IBKRPaperAdapter:
                 "IBKR session is not verified as PAPER. Refusing to continue."
             )
 
-        status = self.auth_status()
-        if not self._is_authenticated(status):
-            # IBKR documents ssodh/init as the step that establishes the
-            # brokerage session required for /iserver endpoints.
-            init = self.initialize_brokerage_session()
-            status = init
+        # Important: initialize the brokerage session BEFORE auth/status.
+        # A previous implementation queried auth/status first and could hang
+        # there even though the browser SSO login was already valid.
+        init = self.initialize_brokerage_session()
+        init_value = self._success_value(init)
+        authenticated = bool(init_value.get("authenticated"))
+        connected = bool(init_value.get("connected"))
+        established = bool(init_value.get("established"))
 
-        status_value = self._success_value(status)
-        authenticated = bool(status_value.get("authenticated"))
-        connected = bool(status_value.get("connected"))
-        established = bool(status_value.get("established"))
+        # Some Gateway versions return only a generic success payload from init.
+        # In that case, perform the status check after initialization.
+        if not (authenticated and established):
+            status = self.auth_status()
+            status_value = self._success_value(status)
+            authenticated = bool(status_value.get("authenticated"))
+            connected = bool(status_value.get("connected"))
+            established = bool(status_value.get("established"))
 
         result: dict[str, object] = {
             "connected": connected,
