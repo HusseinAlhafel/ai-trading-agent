@@ -4,27 +4,54 @@ set -euo pipefail
 ROOT="${HOME}/ibkr-clientportal"
 ZIP="${ROOT}/clientportal.gw.zip"
 URL="https://download2.interactivebrokers.com/portal/clientportal.gw.zip"
+CLASS='ibgroup/web/core/clientportal/gw/GatewayStart.class'
 
 mkdir -p "$ROOT"
 
 if ! command -v java >/dev/null 2>&1; then
-  echo "Java 17+ is required for the IBKR Client Portal Gateway."
+  echo "Java is required for the IBKR Client Portal Gateway."
   exit 1
 fi
 
-# The official archive is downloaded directly from Interactive Brokers.
-# Authentication is intentionally never automated or stored.
-if ! find "$ROOT" -type f -path '*/bin/run.sh' -print -quit | grep -q .; then
-  echo "Downloading official IBKR Client Portal Gateway..."
-  curl -fsSL "$URL" -o "$ZIP"
-  rm -rf "$ROOT/dist" "$ROOT/build" "$ROOT/bin" "$ROOT/root" "$ROOT/clientportal.gw"
-  unzip -q "$ZIP" -d "$ROOT"
-  rm -f "$ZIP"
+JAVA_MAJOR="$(java -version 2>&1 | awk -F'[\".]' '/version/ {print $2; exit}')"
+if [ "${JAVA_MAJOR:-0}" -gt 11 ]; then
+  echo "IBKR Client Portal Gateway setup requires Java 11 in this Codespace."
+  echo "Rebuild the container so the Java 11 feature is applied."
+  exit 1
 fi
 
-RUN_SH="$(find "$ROOT" -type f -path '*/bin/run.sh' -print -quit)"
+find_gateway_home() {
+  find "$ROOT" -type f -path '*/bin/run.sh' -print -quit
+}
+
+find_gateway_class() {
+  local jar
+  while IFS= read -r -d '' jar; do
+    if jar tf "$jar" 2>/dev/null | grep -Fxq "$CLASS"; then
+      return 0
+    fi
+  done < <(find "$ROOT" -type f -name '*.jar' -print0)
+  return 1
+}
+
+RUN_SH="$(find_gateway_home || true)"
+if [ -z "$RUN_SH" ] || ! find_gateway_class; then
+  echo "Installing a fresh official IBKR Client Portal Gateway..."
+  rm -rf "$ROOT/dist" "$ROOT/build" "$ROOT/bin" "$ROOT/root" "$ROOT/clientportal.gw"
+  rm -f "$ZIP" "$ROOT/gateway_home"
+  curl -fsSL "$URL" -o "$ZIP"
+  unzip -q "$ZIP" -d "$ROOT"
+  rm -f "$ZIP"
+  RUN_SH="$(find_gateway_home || true)"
+fi
+
 if [ -z "$RUN_SH" ]; then
   echo "Could not locate IBKR Client Portal Gateway bin/run.sh after extraction."
+  exit 1
+fi
+
+if ! find_gateway_class; then
+  echo "IBKR Gateway archive is missing GatewayStart.class; installation was not accepted."
   exit 1
 fi
 
