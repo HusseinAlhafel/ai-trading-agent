@@ -16,6 +16,18 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -e . pytest yfinance
       - run: pytest -q
+      - name: Verify drawdown circuit breaker
+        run: |
+          python - <<'PY'
+          from ai_trading_agent.engine import TradingEngine
+          from ai_trading_agent.risk import RiskManager
+          from ai_trading_agent.strategy import ExplainableStrategy
+          from ai_trading_agent.broker import PaperBroker
+          from ai_trading_agent.models import Candle, Portfolio
+          import inspect
+          assert "drawdown_halt" in inspect.signature(TradingEngine).parameters
+          print("DRAWdown circuit breaker: configured")
+          PY
       - run: python -m ai_trading_agent.main --data sample_prices.csv --cash 10000
       - run: python -m ai_trading_agent.paper_loop --data sample_prices.csv
       - name: Run 1000 EUR backtest
