@@ -1,0 +1,19 @@
+name: Realistic Stress Backtest
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  stress-backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run realistic stress backtest
+        run: python realistic_stress_backtest.py
