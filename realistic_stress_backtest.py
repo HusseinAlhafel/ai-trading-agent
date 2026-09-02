@@ -63,7 +63,7 @@ def inject_shocks(candles: list[Candle], seed: int, probability: float, sigma: f
     rng = random.Random(seed + 100000)
     out: list[Candle] = []
     price = candles[0].open
-    for i, c in enumerate(candles):
+    for c in candles:
         shock = 0.0
         if rng.random() < probability:
             shock = -abs(rng.gauss(0.0, sigma))
@@ -77,28 +77,35 @@ def inject_shocks(candles: list[Candle], seed: int, probability: float, sigma: f
     return out
 
 
+class SlippagePaperBroker(PaperBroker):
+    """In-memory broker that applies deterministic adverse slippage to fills."""
+
+    def __init__(self, starting_cash: float, fee_rate: float, slippage_rate: float) -> None:
+        super().__init__(starting_cash, BrokerConfig(fee_rate=fee_rate))
+        if not 0 <= slippage_rate < 1:
+            raise ValueError("slippage_rate must be in [0, 1)")
+        self.slippage_rate = slippage_rate
+
+    def submit(self, order: Order):
+        slipped = order.price * (
+            1 + self.slippage_rate if order.side is Side.BUY else 1 - self.slippage_rate
+        )
+        return super().submit(Order(order.side, order.quantity, slipped, order.timestamp))
+
+
 def run_case(candles: list[Candle], case: Case) -> tuple[float, float, int, float, float]:
     fee_rate = case.fee_bps / 10000.0
     slippage = case.slippage_bps / 10000.0
-    broker = PaperBroker(1000.0, BrokerConfig(fee_rate=fee_rate))
+    broker = SlippagePaperBroker(1000.0, fee_rate, slippage)
     risk = RiskManager(fee_rate=fee_rate)
     engine = TradingEngine(broker, ExplainableStrategy(), risk)
+    report = engine.run(candles)
+
     equity_returns: list[float] = []
     previous_equity = 1000.0
     peak = 1000.0
     max_dd = 0.0
-
     for candle in candles:
-        engine.history.append(candle)
-        signal = engine.strategy.decide(engine.history)
-        if signal.side is not None:
-            qty = engine.risk.quantity(signal.side, broker.portfolio, candle.close)
-            if qty > 1e-12:
-                exec_price = candle.close * (1 + slippage if signal.side is Side.BUY else 1 - slippage)
-                try:
-                    broker.submit(Order(signal.side, qty, exec_price, candle.timestamp))
-                except ValueError:
-                    pass
         equity = broker.portfolio.mark_to_market(candle.close)
         if previous_equity > 0:
             equity_returns.append(equity / previous_equity - 1.0)
@@ -107,17 +114,16 @@ def run_case(candles: list[Candle], case: Case) -> tuple[float, float, int, floa
         if peak > 0:
             max_dd = max(max_dd, (peak - equity) / peak * 100.0)
 
-    ending = broker.portfolio.mark_to_market(candles[-1].close)
     mean = statistics.mean(equity_returns) if equity_returns else 0.0
     stdev = statistics.stdev(equity_returns) if len(equity_returns) > 1 else 0.0
     sharpe = mean / stdev * math.sqrt(252) if stdev > 0 else 0.0
-    return (ending / 1000.0 - 1.0) * 100.0, max_dd, len(broker.portfolio.fills), broker.portfolio.fees_paid, sharpe
+    return (report.ending_equity / 1000.0 - 1.0) * 100.0, max_dd, report.fills, report.fees, sharpe
 
 
 def main() -> None:
     runs_per_case = 20
     print("REALISTIC PAPER-TRADING STRESS TEST")
-    print("No live orders; synthetic OHLCV only; Sharpe is annualized from synthetic bar returns and is not a market forecast.")
+    print("No live orders; synthetic OHLCV only; engine risk protections are enabled; Sharpe is not a market forecast.")
     print(f"cases={len(CASES)} runs_per_case={runs_per_case} total_runs={len(CASES) * runs_per_case} bars_per_run=3000 starting_cash=1000")
     for case in CASES:
         results = []
