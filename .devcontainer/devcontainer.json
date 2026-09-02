@@ -1,29 +1,20 @@
 {
   "name": "AI Trading Agent + IBKR Paper",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "context": "."
-  },
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
       "version": "11"
     }
   },
-  "forwardPorts": [5000, 6080],
+  "forwardPorts": [5000],
   "portsAttributes": {
     "5000": {
       "label": "IBKR Paper Client Portal",
-      "protocol": "https",
-      "onAutoForward": "notify"
-    },
-    "6080": {
-      "label": "IBKR Paper Browser",
-      "protocol": "http",
-      "onAutoForward": "notify"
+      "protocol": "https"
     }
   },
   "postCreateCommand": "bash .devcontainer/setup_ibkr_paper.sh",
-  "postStartCommand": "bash .devcontainer/start_ibkr_paper.sh && bash .devcontainer/start_phone_browser.sh",
+  "postStartCommand": "bash .devcontainer/start_ibkr_paper.sh",
   "customizations": {
     "vscode": {
       "extensions": ["ms-python.python"]
