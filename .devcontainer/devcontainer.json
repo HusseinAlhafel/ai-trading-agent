@@ -16,15 +16,17 @@
   "portsAttributes": {
     "5000": {
       "label": "IBKR Paper Client Portal",
-      "protocol": "https"
+      "protocol": "https",
+      "onAutoForward": "notify"
     },
     "6080": {
       "label": "IBKR Paper Browser",
-      "protocol": "http"
+      "protocol": "http",
+      "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends firefox-esr && bash .devcontainer/setup_ibkr_paper.sh",
-  "postStartCommand": "bash .devcontainer/start_ibkr_paper.sh && (export DISPLAY=:1; nohup firefox-esr --no-remote --new-instance https://localhost:5000/ > ${HOME}/ibkr-clientportal/firefox.log 2>&1 &)",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends firefox-esr && bash .devcontainer/setup_ibkr_paper.sh || true",
+  "postStartCommand": "bash .devcontainer/start_ibkr_paper.sh || true; (export DISPLAY=:1; nohup firefox-esr --no-remote --new-instance https://localhost:5000/ > ${HOME}/ibkr-clientportal/firefox.log 2>&1 &) || true",
   "customizations": {
     "vscode": {
       "extensions": ["ms-python.python"]
