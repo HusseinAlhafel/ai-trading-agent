@@ -24,8 +24,10 @@ jobs:
           params = inspect.signature(TradingEngine).parameters
           assert "drawdown_halt" in params
           assert "trade_cooldown_bars" in params
+          assert params["drawdown_halt"].default == 0.12
+          assert params["drawdown_recovery"].default == 0.04
           assert params["trade_cooldown_bars"].default == 3
-          print("Risk protections: drawdown circuit breaker + 3-bar cooldown configured")
+          print("Risk protections: 12% drawdown halt + 4% recovery + 3-bar cooldown")
           PY
       - run: python -m ai_trading_agent.main --data sample_prices.csv --cash 10000
       - run: python -m ai_trading_agent.paper_loop --data sample_prices.csv
