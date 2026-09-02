@@ -82,7 +82,7 @@ GATEWAY_HOME="$(dirname "$(dirname "$RUN_SH")")"
 chmod +x "$GATEWAY_HOME/bin/run.sh"
 printf '%s\n' "$GATEWAY_HOME" > "$ROOT/gateway_home"
 
-python -m pip install -e '.[ibkr]'
+python3 -m pip install -e '.[ibkr]' --break-system-packages
 echo "IBKR Paper Gateway prepared at $GATEWAY_HOME."
 echo "Java 11 ready at $(dirname "$(dirname "$JAVA_BIN")")."
 echo "No credentials or 2FA codes were stored."
