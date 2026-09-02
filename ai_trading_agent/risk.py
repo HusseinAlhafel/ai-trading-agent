@@ -7,8 +7,9 @@ from .models import Portfolio, Side
 
 @dataclass(frozen=True)
 class RiskConfig:
-    position_fraction: float = 0.20
-    max_position_fraction: float = 1.00
+    # Keep each directional allocation modest while the strategy is validated.
+    position_fraction: float = 0.10
+    max_position_fraction: float = 0.50
 
 
 class RiskManager:
