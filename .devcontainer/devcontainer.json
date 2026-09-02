@@ -11,7 +11,7 @@
     }
   },
   "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends curl unzip ca-certificates python3-pip openjdk-11-jre-headless && python3 -m pip install -e '.[ibkr]' --break-system-packages && bash .devcontainer/setup_ibkr_paper.sh",
-  "postStartCommand": "bash .devcontainer/start_ibkr_paper.sh || true",
+  "postStartCommand": "bash .devcontainer/start_ibkr_paper.sh || true; python3 scripts/ibkr_paper_ready.py || true",
   "customizations": {
     "vscode": {
       "extensions": ["ms-python.python"]
