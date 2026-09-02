@@ -4,7 +4,6 @@ set -euo pipefail
 ROOT="${HOME}/ibkr-clientportal"
 ZIP="${ROOT}/clientportal.gw.zip"
 URL="https://download2.interactivebrokers.com/portal/clientportal.gw.zip"
-CLASS='ibgroup/web/core/clientportal/gw/GatewayStart.class'
 JRE_DIR="${ROOT}/jre11"
 
 mkdir -p "$ROOT"
@@ -47,19 +46,9 @@ find_gateway_home() {
   find "$ROOT" -type f -path '*/bin/run.sh' -print -quit
 }
 
-find_gateway_class() {
-  local jar
-  while IFS= read -r -d '' jar; do
-    if jar tf "$jar" 2>/dev/null | grep -Fxq "$CLASS"; then
-      return 0
-    fi
-  done < <(find "$ROOT" -type f -name '*.jar' -print0)
-  return 1
-}
-
 RUN_SH="$(find_gateway_home || true)"
-if [ -z "$RUN_SH" ] || ! find_gateway_class; then
-  echo "Installing a fresh official IBKR Client Portal Gateway..."
+if [ -z "$RUN_SH" ]; then
+  echo "Installing the current official IBKR Client Portal Gateway..."
   rm -rf "$ROOT/dist" "$ROOT/build" "$ROOT/bin" "$ROOT/root" "$ROOT/clientportal.gw"
   rm -f "$ZIP" "$ROOT/gateway_home"
   curl -fsSL "$URL" -o "$ZIP"
@@ -70,11 +59,6 @@ fi
 
 if [ -z "$RUN_SH" ]; then
   echo "Could not locate IBKR Client Portal Gateway bin/run.sh after extraction."
-  exit 1
-fi
-
-if ! find_gateway_class; then
-  echo "IBKR Gateway archive is missing GatewayStart.class; installation was not accepted."
   exit 1
 fi
 
