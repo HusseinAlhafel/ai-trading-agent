@@ -4,15 +4,31 @@ set -euo pipefail
 ROOT="${HOME}/ibkr-clientportal"
 LOG="${ROOT}/gateway.log"
 HOME_FILE="${ROOT}/gateway_home"
+JAVA_HOME_FILE="${ROOT}/java_home"
 
 if [ ! -s "$HOME_FILE" ]; then
-  echo "IBKR Paper Gateway is not installed yet. Rebuild the Codespace container once."
+  echo "IBKR Paper Gateway is not installed yet. Run setup_ibkr_paper.sh once."
   exit 0
 fi
 
 GATEWAY_HOME="$(cat "$HOME_FILE")"
 RUN_SH="$GATEWAY_HOME/bin/run.sh"
 CONF="$GATEWAY_HOME/root/conf.yaml"
+
+if [ -s "$JAVA_HOME_FILE" ]; then
+  export JAVA_HOME="$(cat "$JAVA_HOME_FILE")"
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
+if ! command -v java >/dev/null 2>&1; then
+  echo "Java 11 is not available. Run setup_ibkr_paper.sh first."
+  exit 1
+fi
+JAVA_MAJOR="$(java -version 2>&1 | awk -F'[\".]' '/version/ {print $2; exit}')"
+if [ "${JAVA_MAJOR:-0}" != "11" ]; then
+  echo "IBKR Client Portal Gateway requires Java 11; detected Java ${JAVA_MAJOR:-unknown}."
+  exit 1
+fi
 
 if [ ! -x "$RUN_SH" ] || [ ! -f "$CONF" ]; then
   echo "IBKR Paper Gateway installation is incomplete. Run setup_ibkr_paper.sh again."
