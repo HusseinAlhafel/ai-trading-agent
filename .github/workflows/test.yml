@@ -27,6 +27,8 @@ jobs:
           PY
       - name: Run multi-regime robustness backtest
         run: python stress_backtest.py
+      - name: Run realistic 100-run stress backtest
+        run: python realistic_stress_backtest.py
       - name: Run real-market historical paper backtest
         run: python real_market_backtest.py
       - name: Run no-lookahead robust validation
