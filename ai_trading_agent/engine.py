@@ -19,7 +19,7 @@ class RunReport:
 
 
 class TradingEngine:
-    """Paper-trading execution loop with a conservative drawdown circuit breaker."""
+    """Paper-trading execution loop with drawdown and overtrading protection."""
 
     def __init__(
         self,
@@ -28,17 +28,22 @@ class TradingEngine:
         risk: RiskManager,
         drawdown_halt: float = 0.15,
         drawdown_recovery: float = 0.05,
+        trade_cooldown_bars: int = 3,
     ) -> None:
         if not 0 < drawdown_recovery < drawdown_halt < 1:
             raise ValueError("drawdown_recovery must be below drawdown_halt and both must be in (0, 1)")
+        if trade_cooldown_bars < 0:
+            raise ValueError("trade_cooldown_bars must be non-negative")
         self.broker = broker
         self.strategy = strategy
         self.risk = risk
         self.history: list[Candle] = []
         self.drawdown_halt = drawdown_halt
         self.drawdown_recovery = drawdown_recovery
+        self.trade_cooldown_bars = trade_cooldown_bars
         self._peak_equity: float | None = None
         self._drawdown_halted = False
+        self._last_trade_index: int | None = None
 
     def run(self, candles: list[Candle]) -> RunReport:
         if not candles:
@@ -46,32 +51,38 @@ class TradingEngine:
         starting = self.broker.portfolio.cash
         for candle in candles:
             self.history.append(candle)
+            index = len(self.history) - 1
             equity = self.broker.portfolio.mark_to_market(candle.close)
             self._peak_equity = equity if self._peak_equity is None else max(self._peak_equity, equity)
             drawdown = 0.0 if self._peak_equity <= 0 else (self._peak_equity - equity) / self._peak_equity
 
-            # Hard protection: flatten the paper position during a deep drawdown
-            # and block new BUY orders until the portfolio has materially recovered.
+            # Hard protection: flatten during a deep drawdown and block new
+            # orders until the portfolio has materially recovered.
             if drawdown >= self.drawdown_halt:
                 self._drawdown_halted = True
                 if self.broker.portfolio.position > 1e-12:
                     qty = self.broker.portfolio.position
                     self.broker.submit(Order(Side.SELL, qty, candle.close, candle.timestamp))
+                    self._last_trade_index = index
                 continue
             if self._drawdown_halted:
                 if drawdown > self.drawdown_recovery:
                     continue
                 self._drawdown_halted = False
 
+            # Prevent rapid signal flipping from turning small edges into fees
+            # and slippage. The cooldown is measured in candles, not wall time.
+            if self._last_trade_index is not None and index - self._last_trade_index <= self.trade_cooldown_bars:
+                continue
+
             signal = self.strategy.decide(self.history)
             if signal.side is None:
                 continue
-            # While halted we never reach this point; normal signals use the
-            # conservative 10% target sizing from RiskManager.
             qty = self.risk.quantity(signal.side, self.broker.portfolio, candle.close)
             if qty <= 1e-12:
                 continue
             self.broker.submit(Order(signal.side, qty, candle.close, candle.timestamp))
+            self._last_trade_index = index
         ending = self.broker.portfolio.mark_to_market(candles[-1].close)
         return RunReport(
             starting,
