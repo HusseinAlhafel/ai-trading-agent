@@ -5,10 +5,11 @@ ROOT="${HOME}/ibkr-clientportal"
 LOG="${ROOT}/gateway.log"
 HOME_FILE="${ROOT}/gateway_home"
 JAVA_HOME_FILE="${ROOT}/java_home"
+SETUP="$(cd "$(dirname "$0")" && pwd)/setup_ibkr_paper.sh"
 
 if [ ! -s "$HOME_FILE" ]; then
-  echo "IBKR Paper Gateway is not installed yet. Run setup_ibkr_paper.sh once."
-  exit 0
+  echo "IBKR Paper Gateway is not prepared yet; running setup automatically..."
+  bash "$SETUP"
 fi
 
 GATEWAY_HOME="$(cat "$HOME_FILE")"
