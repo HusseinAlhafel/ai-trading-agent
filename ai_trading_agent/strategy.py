@@ -14,7 +14,7 @@ class Signal:
 
 
 class ExplainableStrategy:
-    """A deterministic AI-style scorer using trend, momentum and volatility."""
+    """A conservative deterministic scorer using trend, momentum and volatility."""
 
     def __init__(self, fast_period: int = 5, slow_period: int = 12, momentum_period: int = 4) -> None:
         self.fast_period = fast_period
@@ -38,18 +38,24 @@ class ExplainableStrategy:
         elif fast < slow:
             score -= 0.5
             reasons.append("fast SMA below slow SMA")
+
         if mom > 0.01:
             score += 0.4
             reasons.append("positive momentum")
         elif mom < -0.01:
             score -= 0.4
             reasons.append("negative momentum")
+
+        # Volatility is a risk filter, not a reason to trade. In stressed
+        # conditions confidence is cut in half, preventing marginal entries.
         if vol is not None and vol > 0.08:
             score *= 0.5
             reasons.append("high volatility reduced confidence")
 
-        if score >= 0.6:
+        # Require full trend + momentum alignment. This removes the previous
+        # 0.6 threshold, which allowed weaker signals and excessive churn.
+        if score >= 0.9:
             return Signal(Side.BUY, score, "; ".join(reasons))
-        if score <= -0.6:
+        if score <= -0.9:
             return Signal(Side.SELL, score, "; ".join(reasons))
         return Signal(None, score, "; ".join(reasons) or "no edge")
