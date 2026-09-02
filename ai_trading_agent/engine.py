@@ -26,8 +26,8 @@ class TradingEngine:
         broker: PaperBroker,
         strategy: ExplainableStrategy,
         risk: RiskManager,
-        drawdown_halt: float = 0.15,
-        drawdown_recovery: float = 0.05,
+        drawdown_halt: float = 0.12,
+        drawdown_recovery: float = 0.04,
         trade_cooldown_bars: int = 3,
     ) -> None:
         if not 0 < drawdown_recovery < drawdown_halt < 1:
