@@ -56,8 +56,6 @@ class TradingEngine:
             self._peak_equity = equity if self._peak_equity is None else max(self._peak_equity, equity)
             drawdown = 0.0 if self._peak_equity <= 0 else (self._peak_equity - equity) / self._peak_equity
 
-            # Hard protection: flatten during a deep drawdown and block new
-            # orders until the portfolio has materially recovered.
             if drawdown >= self.drawdown_halt:
                 self._drawdown_halted = True
                 if self.broker.portfolio.position > 1e-12:
@@ -70,15 +68,14 @@ class TradingEngine:
                     continue
                 self._drawdown_halted = False
 
-            # Prevent rapid signal flipping from turning small edges into fees
-            # and slippage. The cooldown is measured in candles, not wall time.
             if self._last_trade_index is not None and index - self._last_trade_index <= self.trade_cooldown_bars:
                 continue
 
             signal = self.strategy.decide(self.history)
             if signal.side is None:
                 continue
-            qty = self.risk.quantity(signal.side, self.broker.portfolio, candle.close)
+            closes = [c.close for c in self.history]
+            qty = self.risk.quantity(signal.side, self.broker.portfolio, candle.close, closes=closes)
             if qty <= 1e-12:
                 continue
             self.broker.submit(Order(signal.side, qty, candle.close, candle.timestamp))
